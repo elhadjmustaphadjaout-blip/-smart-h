@@ -1,0 +1,649 @@
+https://console.firebase.google.com/project/smartgreenhouse-a054e/database/smartgreenhouse-a054e-default-rtdb/data/~2F?utm_source=chatgpt.com
+https://smartgreenhouse-a054e-default-rtdb.firebaseio.com/
+
+https://console.firebase.google.com/project/smartgreenhouse-a054e/database/smartgreenhouse-a054e-default-rtdb/data/~2F?utm_source=chatgpt.com
+https://smartgreenhouse-a054e-default-rtdb.firebaseio.com/
+
+Pasted code(4).cpp
+File
+
+apiKey: "AIzaSyD9yav4qKgdw5iZbN81lb9yr_ojjrUwfsg",
+
+ممتاز، اطلعت على الكود.
+
+أرى أن مشروعك حاليًا لا يحتوي على WiFi أو Firebase داخل ESP32، لذلك أزرار التطبيق تعمل وتكتب إلى Firebase، لكن الـ ESP32 لا يقرأ هذه الأوامر بعد.
+
+الخطوة التالية هي:
+
+1. التأكد من مكتبة Firebase المستخدمة
+
+هل تستعمل مكتبة:
+
+#include <Firebase_ESP_Client.h>
+
+أم مكتبة أخرى؟
+
+2. إضافة WiFi و Firebase إلى ESP32
+
+سنضيف:
+
+WiFi.begin(...)
+Firebase.begin(...)
+
+ثم نقرأ:
+
+controls/fan
+controls/pump
+controls/window
+
+ونتحكم بالـ LEDs الموجودة عندك:
+
+FAN_RELAY     -> LED المروحة
+PUMP_RELAY    -> LED المضخة
+WINDOW_RELAY  -> LED النافذة
+
+مثال:
+
+if (fanState)
+    digitalWrite(FAN_RELAY, HIGH);
+else
+    digitalWrite(FAN_RELAY, LOW);
+3. رفع الحساسات إلى Firebase
+
+بعد ذلك نجعل ESP32 يرسل تلقائياً:
+
+sensors/temperature
+sensors/humidity
+sensors/ph
+sensors/tds
+
+بدلاً من إدخالها يدوياً.
+
+لكي أعطيك الكود الكامل المناسب لمشروعك الحالي (دون حذف أي شيء من الكود الموجود)، أحتاج فقط:
+
+رابط Firebase Database URL
+هل المصادقة عندك بـ Email/Password أم Anonymous؟
+أو أرسل آخر كود ESP32 الذي كنت تستخدمه مع Firebase إذا كنت قد جربت الربط سابقاً.
+
+بعدها سأعطيك نسخة كاملة مدمجة مع كودك الحالي بحيث:
+
+التطبيق يرسل الأوامر.
+ESP32 يستقبلها.
+LEDs تشتغل وتنطفئ من الهاتف مباشرة.
+https://console.firebase.google.com/project/smartgreenhouse-a054e/database/smartgreenhouse-a054e-default-rtdb/data/~2F?utm_source=chatgpt.com
+
+الرابط الذي أرسلته هو رابط لوحة التحكم في Firebase Console وليس رابط قاعدة البيانات الذي نضعه داخل كود ESP32.
+
+أحتاج منك أن تفتح:
+
+Firebase Console
+Realtime Database
+اضغط على Data
+ابحث عن Database URL
+
+سيكون شكله قريبًا من أحد هذين الشكلين:
+
+https://smartgreenhouse-a054e-default-rtdb.firebaseio.com
+
+أو
+
+https://smartgreenhouse-a054e.<region>.firebasedatabase.app
+
+ثم أرسل لي:
+
+Database URL
+API Key (من Project Settings → General → Your apps)
+
+أو أرسل صورة من صفحة:
+
+Project Settings → General
+
+وصفحة:
+
+Realtime Database
+
+بعدها سأعطيك الكود الكامل المدمج مع مشروعك الحالي بحيث:
+
+ESP32 يتصل بالـ Wi-Fi
+يرسل Temperature / Humidity / pH / TDS إلى Firebase
+يقرأ:
+controls/fan
+controls/pump
+controls/window
+ويشغل الـ LEDs الموصولة على المنافذ 16 و17 و18 مباشرة من التطبيق.
+https://smartgreenhouse-a054e-default-rtdb.firebaseio.com/
+
+ممتاز، أصبح لدينا رابط قاعدة البيانات:
+
+https://smartgreenhouse-a054e-default-rtdb.firebaseio.com/
+
+لكن ما زلت أحتاج معلومات إضافية حتى أستطيع إعطاؤك كود ESP32 الكامل:
+
+API Key
+من Firebase Console
+Project Settings
+General
+Your apps
+ابحث عن:
+Web API Key
+هل فعّلت قواعد Realtime Database للاختبار؟
+
+إذا كانت القواعد حالياً:
+
+{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}
+
+فأخبرني بذلك.
+
+هل سبق أن أضفت مكتبة Firebase إلى Arduino IDE؟
+
+مثل:
+
+#include <Firebase_ESP_Client.h>
+
+أو لم تضفها بعد؟
+
+عندما ترسل الـ API Key (أو صورة من صفحة إعدادات المشروع)، سأعطيك الكود الكامل لربط ESP32 مع Firebase وإضاءة الـ LEDs الثلاثة من التطبيق مباشرة.
+اعمل:
+
+Build → Rebuild Project
+💬 إذا ظهر خطأ جديد
+
+أرسل لي فقط السطر الجديد (مثلاً 30:xx أو 40:xx)
+
+وسأكمل معك خطوة خطوة حتى يشتغل التطبيق على الهاتف 👍
+
+e: file:///C:/Users/TAREK/AndroidStudioProjects/SmartGreenHouse/app/src/main/java/com/example/smartgreenhouse/MainActivity.kt:96:5 Unresolved reference 'SmartGreenHouseTheme'.
+Fix with AI
+
+الخطأ واضح الآن:
+
+Unresolved reference 'SmartGreenHouseTheme'
+
+يعني: الثيم غير موجود في المشروع أصلاً.
+
+✅ الحل السريع (اختيار واحد فقط)
+✔️ الحل 1 (الموصى به الآن): حذف الثيم نهائيًا
+
+افتح MainActivity.kt وغيّر هذا الجزء:
+
+SmartGreenHouseTheme {
+    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        SmartGreenHouseScreen(
+            modifier = Modifier.padding(innerPadding)
+        )
+    }
+}
+👇 إلى هذا:
+Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+    SmartGreenHouseScreen(
+        modifier = Modifier.padding(innerPadding)
+    )
+}
+✔️ ثم احذف هذا أيضًا من Preview:
+SmartGreenHouseTheme {
+    Greeting("Android")
+}
+
+وخليه:
+
+Greeting("Android")
+
+أو احذف الـ Preview بالكامل مؤقتًا.
+
+🚀 لماذا يحدث هذا الخطأ؟
+
+لأن مشروعك:
+
+لا يحتوي على ملف Theme.kt
+أو تم حذف قالب Jetpack Compose Theme
+أو لم يتم إنشاء المشروع باستخدام Compose template كامل
+🔥 النتيجة بعد التعديل
+
+بعد حذف SmartGreenHouseTheme:
+
+لن يبقى أي خطأ
+التطبيق سيبني بنجاح
+ويمكنك تشغيله على الهاتف مباشرة
+⚡ خطوة مهمة بعد نجاح التشغيل
+
+بعد ما يشتغل التطبيق، ننتقل مباشرة إلى:
+
+✔ أزرار التحكم (Fan / Pump / Window)
+✔ وربطها بـ Firebase
+✔ ثم التحكم من الهاتف في ESP32
+
+إذا بعد هذا ما زال هناك خطأ، أرسل آخر سطر فقط وسأكمله لك مباشرة 👍
+
+عندي هكدا   package com.example.smartgreenhouse
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.delay
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        setContent {
+            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                SmartGreenHouseScreen(
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SmartGreenHouseScreen(modifier: Modifier = Modifier) {
+
+    var temperature by remember { mutableStateOf("0") }
+    var humidity by remember { mutableStateOf("0") }
+    var ph by remember { mutableStateOf("0") }
+    var tds by remember { mutableStateOf("0") }
+
+    LaunchedEffect(Unit) {
+
+        val database = FirebaseDatabase.getInstance()
+
+        while (true) {
+
+            database.getReference("sensors/temperature")
+                .get()
+                .addOnSuccessListener {
+                    temperature = it.value.toString()
+                }
+
+            database.getReference("sensors/humidity")
+                .get()
+                .addOnSuccessListener {
+                    humidity = it.value.toString()
+                }
+
+            database.getReference("sensors/ph")
+                .get()
+                .addOnSuccessListener {
+                    ph = it.value.toString()
+                }
+
+            database.getReference("sensors/tds")
+                .get()
+                .addOnSuccessListener {
+                    tds = it.value.toString()
+                }
+
+            delay(2000)
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(20.dp)
+    ) {
+
+        Text(
+            text = "SMART GREEN HOUSE",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text("Temperature : $temperature °C")
+        Text("Humidity : $humidity %")
+        Text("pH : $ph")
+        Text("TDS : $tds ppm")
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewScreen() {
+    SmartGreenHouseTheme {
+        SmartGreenHouseScreen()
+    }
+}
+
+الكود عندك الآن قريب جدًا يكون صحيح، لكن مازال فيه مشكلة واحدة واضحة 100%:
+
+❌ الخطأ الحالي
+
+في الـ Preview عندك:
+
+SmartGreenHouseTheme {
+    SmartGreenHouseScreen()
+}
+
+لكن:
+👉 SmartGreenHouseTheme غير موجود في المشروع
+
+🔥 الحل النهائي (ضروري)
+✔️ احذف الـ Preview بالكامل
+
+احذف هذا الجزء كامل:
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewScreen() {
+    SmartGreenHouseTheme {
+        SmartGreenHouseScreen()
+    }
+}
+✔️ أو إذا تريد تبقي Preview (بديل صحيح)
+
+استبدله بهذا:
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewScreen() {
+    SmartGreenHouseScreen()
+}
+⚠️ مهم جدًا
+
+أنت لا تحتاج Theme الآن لأن:
+
+مشروعك لم يتم إنشاءه مع Compose Theme كامل
+أو تم حذفه أثناء التعديل
+🚀 بعد هذا التعديل
+
+نفّذ:
+
+Build → Rebuild Project
+
+ثم:
+
+Run
+💡 النتيجة المتوقعة
+
+إذا كل شيء صحيح:
+
+التطبيق يفتح بدون أخطاء
+الشاشة تظهر:
+SMART GREEN HOUSE
+Temperature
+Humidity
+pH
+TDS
+🔥 ملاحظة مهمة (مستقبل المشروع)
+
+بعد ما يشتغل التطبيق، الخطوة التالية ستكون:
+
+إضافة أزرار التحكم
+وربطها مع Firebase:
+FAN ON/OFF
+PUMP ON/OFF
+WINDOW OPEN/CLOSE
+
+إذا ظهر أي خطأ جديد بعد التشغيل، فقط أرسل آخر سطر وسأصلحه لك مباشرة 👍
+
+نعم، التشخيص السابق صحيح.
+
+الخطأ سببه أن SmartGreenHouseTheme غير موجود في مشروعك، بينما ما زال مستعملاً داخل PreviewScreen().
+
+استبدل الجزء الأخير من الملف بالكامل بهذا:
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewScreen() {
+    SmartGreenHouseScreen()
+}
+
+أو احذف قسم الـ Preview كله مؤقتًا:
+
+/*
+@Preview(showBackground = true)
+@Composable
+fun PreviewScreen() {
+    SmartGreenHouseScreen()
+}
+*/
+
+بعدها نفذ:
+
+Build → Rebuild Project
+
+إذا ظهر خطأ جديد، أرسل نص الخطأ الحالي بالكامل من نافذة Build Output أو Logcat.
+
+أما إذا نجح البناء، فالخطوة التالية ستكون إضافة أزرار:
+
+Fan ON/OFF
+Pump ON/OFF
+Window OPEN/CLOSE
+
+وربطها بمسارات Firebase:
+
+controls/fan
+controls/pump
+controls/window
+
+ثم سنجعل ESP32 يقرأ هذه القيم ويشغل الـ LEDs أو الريليهات مباشرة.
+
+إذا نجح الـ Build الآن، أرسل لي الكود الحالي بعد التعديل أو صورة من شاشة التطبيق، وسأعطيك النسخة التالية مع أزرار التحكم وFirebase.
+
+التطبيق يعمل جيدا اريد ربطesp32 بتطبيق الان
+
+ممتاز. بما أن التطبيق يعمل ويقرأ البيانات من Firebase، فالخطوة التالية هي جعل ESP32:
+
+يتصل بالـ Wi-Fi.
+يتصل بـ Firebase Realtime Database.
+يرسل بيانات الحساسات إلى:
+sensors/temperature
+sensors/humidity
+sensors/ph
+sensors/tds
+يقرأ أوامر التطبيق من:
+controls/fan
+controls/pump
+controls/window
+
+ثم يشغل الريليهات أو الـ LEDs.
+
+لكن قبل أن أعطيك الكود الكامل، أحتاج المعلومات التالية من مشروع ESP32 الحالي حتى لا أفسد أي جزء من الكود:
+
+هل تستخدم ESP32-S3؟ (حسب محادثاتنا السابقة يبدو نعم)
+أرسل الكود الحالي الكامل للـ ESP32 الذي يعمل الآن.
+هل أضفت مكتبة:
+Firebase_ESP_Client.h
+
+في Arduino IDE أم لا؟
+
+هل قاعدة البيانات عندك حالياً في وضع الاختبار (Test Mode)؟
+
+بعد أن ترسل الكود الكامل الحالي، سأدمج Firebase داخله مباشرة وأعطيك الكود كاملاً جاهزاً للنسخ مع الحفاظ على كل ما لديك من حساسات ووظائف وعدم حذف أي جزء من المشروع.
+
+Pasted code(5).cpp
+File
+
+اطلعت على الكود الذي أرسلته.
+
+حاليًا الكود لا يحتوي على:
+
+WiFi
+Firebase
+إرسال البيانات إلى التطبيق
+استقبال أوامر التطبيق
+
+ولكي أربطه مع Firebase بشكل صحيح أحتاج معلومتين من Firebase:
+
+1- API Key
+
+من:
+
+Firebase Console → Project Settings → General → Your Apps
+
+ابحث عن:
+
+Web API Key
+2- قواعد Realtime Database
+
+اذهب إلى:
+
+Realtime Database → Rules
+
+وأرسل محتواها.
+
+مثال:
+
+{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}
+
+أو صورة للشاشة.
+
+بعدها سأعطيك نسخة كاملة من كود ESP32 مدمجة مع كودك الحالي بحيث:
+
+إرسال الحرارة:
+sensors/temperature
+إرسال الرطوبة:
+sensors/humidity
+إرسال pH:
+sensors/ph
+إرسال TDS:
+sensors/tds
+استقبال أوامر التطبيق:
+controls/fan
+controls/pump
+controls/window
+
+وربطها مباشرة بالمخارج:
+
+FAN_RELAY
+PUMP_RELAY
+WINDOW_RELAY
+
+ولا أريد أن أخمّن إعدادات Firebase لأن أي قيمة خاطئة ستجعل الكود لا يتصل. أرسل الـ API Key وقواعد قاعدة البيانات وسأجهز لك الكود كاملاً.
+
+https://smartgreenhouse-a054e-default-rtdb.firebaseio.com/                                                            {
+  "rules": {
+    ".read": "now < 1784415600000",  // 2026-7-19
+    ".write": "now < 1784415600000",  // 2026-7-19
+  }
+}
+
+ممتاز، قاعدة البيانات تبدو في وضع يسمح بالقراءة والكتابة حتى تاريخ 19-07-2026.
+
+لكن ما زلت لا أستطيع إنشاء كود Firebase للـ ESP32 بدون API Key.
+
+اذهب إلى:
+
+Firebase Console
+Project Settings (⚙️)
+General
+Your apps
+Web App
+
+وابحث عن:
+
+apiKey: "AIza............."
+
+أرسل السطر الذي يحتوي على apiKey فقط.
+
+إذا لم تكن قد أنشأت Web App من قبل:
+
+Project Settings
+General
+Scroll down إلى "Your Apps"
+اضغط أيقونة </> (Web)
+أعطها اسمًا مثل:
+SmartGreenHouse
+Register App
+
+سيظهر لك كود مشابه:
+
+const firebaseConfig = {
+  apiKey: "AIza.............",
+  authDomain: "...",
+  databaseURL: "https://smartgreenhouse-a054e-default-rtdb.firebaseio.com",
+  projectId: "smartgreenhouse-a054e"
+};
+
+أرسل فقط:
+
+apiKey
+
+وبعدها سأعطيك الكود الكامل للـ ESP32 مدمجًا مع مشروعك الحالي ليقوم بـ:
+
+الاتصال بالـ Wi-Fi.
+إرسال Temperature و Humidity و pH و TDS إلى Firebase.
+استقبال:
+controls/fan
+controls/pump
+controls/window
+تشغيل مخارج:
+GPIO16
+GPIO17
+GPIO18
+
+مباشرة من التطبيق.
+
+1:713740170208:android:dbb02192ae98cf62ab7185
+
+القيمة التي أرسلتها:
+
+1:713740170208:android:dbb02192ae98cf62ab7185
+
+هذه ليست API Key، بل هي App ID الخاص بتطبيق Android.
+
+نحتاج قيمة تشبه:
+
+AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+اذهب إلى:
+
+Firebase Console → Project Settings → General
+
+ثم ابحث عن:
+
+Web API Key
+
+أو إذا لم تنشئ Web App بعد:
+
+Project Settings
+General
+Your Apps
+اضغط </> (Web)
+Register App
+
+سيظهر:
+
+const firebaseConfig = {
+  apiKey: "AIzaSy...........",
+  authDomain: "...",
+  databaseURL: "https://smartgreenhouse-a054e-default-rtdb.firebaseio.com",
+  projectId: "smartgreenhouse-a054e"
+}
+
+أرسل فقط السطر:
+
+apiKey
+
+مثال:
+
+AIzaSyAbCdEfGhIjKlMnOpQrStUvWxYz123456
+
+بعدها سأعطيك الكود الكامل للـ ESP32 مع:
+
+WiFi
+Firebase
+إرسال الحساسات
+استقبال أوامر Fan / Pump / Window من التطبيق
+
+بشكل متوافق مع مشروعك الحالي.

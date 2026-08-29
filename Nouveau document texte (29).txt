@@ -1,0 +1,179 @@
+package com.example.smartgreenhouse
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.delay
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        setContent {
+            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                SmartGreenHouseScreen(
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SmartGreenHouseScreen(modifier: Modifier = Modifier) {
+
+    var temperature by remember { mutableStateOf("0") }
+    var humidity by remember { mutableStateOf("0") }
+    var ph by remember { mutableStateOf("0") }
+    var tds by remember { mutableStateOf("0") }
+    var fanState by remember { mutableStateOf(false) }
+    var pumpState by remember { mutableStateOf(false) }
+    var windowState by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+
+        val database = FirebaseDatabase.getInstance()
+
+        while (true) {
+
+            database.getReference("Sensors/DHT22/Temperature")
+                .get()
+                .addOnSuccessListener {
+                    temperature = it.value.toString()
+                }
+
+            database.getReference("Sensors/DHT22/Humidity")
+                .get()
+                .addOnSuccessListener {
+                    humidity = it.value.toString()
+                }
+
+
+
+            database.getReference("Sensors/TDS")
+                .get()
+                .addOnSuccessListener {
+                    ph = it.value.toString()
+                }
+
+            database.getReference("sensors/tds")
+                .get()
+                .addOnSuccessListener {
+                    tds = it.value.toString()
+                }
+            database.getReference("controls/fan")
+                .get()
+                .addOnSuccessListener {
+                    fanState = it.value.toString() == "true"
+                }
+
+            database.getReference("controls/pump")
+                .get()
+                .addOnSuccessListener {
+                    pumpState = it.value.toString() == "true"
+                }
+
+            database.getReference("controls/window")
+                .get()
+                .addOnSuccessListener {
+                    windowState = it.value.toString() == "true"
+                }
+            delay(2000)
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(20.dp)
+    ) {
+
+        Text(
+            text = "SMART GREEN HOUSE",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text("Temperature : $temperature °C")
+        Text("Humidity : $humidity %")
+        Text("pH : $ph")
+        Text("TDS : $tds ppm")
+        Spacer(modifier = Modifier.height(30.dp))
+
+        Text(
+            text = "Controls",
+            style = MaterialTheme.typography.headlineSmall
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Button(
+            onClick = {
+                fanState = !fanState
+                FirebaseDatabase.getInstance()
+                    .getReference("controls/fan")
+                    .setValue(fanState)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                if (fanState)
+                    "Fan ON"
+                else
+                    "Fan OFF"
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Button(
+            onClick = {
+                pumpState = !pumpState
+                FirebaseDatabase.getInstance()
+                    .getReference("controls/pump")
+                    .setValue(pumpState)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                if (pumpState)
+                    "Pump ON"
+                else
+                    "Pump OFF"
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Button(
+            onClick = {
+                windowState = !windowState
+                FirebaseDatabase.getInstance()
+                    .getReference("controls/window")
+                    .setValue(windowState)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                if (windowState)
+                    "Window OPEN"
+                else
+                    "Window CLOSED"
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewScreen() {
+    SmartGreenHouseScreen()

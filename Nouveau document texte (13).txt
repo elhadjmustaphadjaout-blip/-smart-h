@@ -1,0 +1,301 @@
+
+| ----------------- | ------------ | ---------------- |
+| **DHT22**         | DATA         | **GPIO 4**       |
+|                   | VCC          | 3.3V             |
+|                   | GND          | GND              |
+| **DS18B20**       | DATA         | **GPIO 5**       |
+|                   | VCC          | 3.3V             |
+|                   | GND          | GND              |
+| **LCD I2C**       | SDA          | **GPIO 8**       |
+|                   | SCL          | **GPIO 9**       |
+|                   | VCC          | 5V               |
+|                   | GND          | GND              |
+| **Relay المروحة** | IN1          | **GPIO 16**      |
+| **Relay المضخة**  | IN2          | **GPIO 17**      |
+| **Relay النافذة** | IN3          | **GPIO 18**      |
+| **Relay Module**  | VCC          | 5V               |
+|                   | GND          | GND              |
+
+
+
+
+// =====================================================
+// البيت الزراعي الذكي - ESP32
+// DHT22 + DS18B20 + LCD I2C + 3 Relays
+// =====================================================
+
+// استدعاء مكتبة الاتصال I2C الخاصة بالشاشة
+#include <Wire.h>
+
+// استدعاء مكتبة شاشة LCD I2C
+#include <LiquidCrystal_I2C.h>
+
+// استدعاء مكتبة حساس DHT22
+#include <DHT.h>
+
+// استدعاء مكتبات حساس DS18B20
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// =====================================================
+// إعداد DHT22
+// =====================================================
+
+#define DHTPIN 4                 // رجل البيانات الخاصة بحساس DHT22
+
+#define DHTTYPE DHT22            // تحديد نوع الحساس DHT22
+
+//=================================================
+#define SDA_PIN 8
+#define SCL_PIN 9
+
+// =====================================================
+// إعداد DS18B20
+// =====================================================
+
+#define ONE_WIRE_BUS 5           // رجل البيانات الخاصة بحساس DS18B20
+
+// =====================================================
+// إعداد الريليهات
+// =====================================================
+
+#define FAN_RELAY     16         // ريليه المروحة
+
+#define PUMP_RELAY    17         // ريليه المضخة
+
+#define WINDOW_RELAY  18         // ريليه النافذة
+
+// =====================================================
+// إعداد حساسات pH و TDS
+// =====================================================
+
+#define PH_PIN   1      // خرج AO من وحدة pH
+#define TDS_PIN  2      // خرج A من وحدة TDS
+
+// =====================================================
+// إنشاء الكائنات
+// =====================================================
+
+DHT dht(DHTPIN, DHTTYPE);        // إنشاء كائن حساس DHT22
+
+OneWire oneWire(ONE_WIRE_BUS);   // إنشاء ناقل OneWire
+
+DallasTemperature ds18b20(&oneWire); // إنشاء كائن DS18B20
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); // إنشاء كائن الشاشة 16x2
+
+// =====================================================
+// متغيرات عامة
+// =====================================================
+
+float temp = 0;                 // متغير لتخزين درجة الحرارة
+
+float hum = 0;                  // متغير لتخزين الرطوبة
+
+bool windowClosed = false;      // متغير لمعرفة حالة النافذة
+
+int phRaw = 0;          // القراءة الخام لحساس pH
+
+int tdsRaw = 0;         // القراءة الخام لحساس TDS
+
+unsigned long lastScreenChange = 0;
+
+bool screenPage = false;
+
+// =====================================================
+// الدالة Setup
+// =====================================================
+
+void setup()
+{
+  Serial.begin(115200);         // تشغيل المنفذ التسلسلي
+
+  Wire.begin(SDA_PIN, SCL_PIN); // تهيئة I2C على GPIO8 و GPIO9
+  Wire.setClock(100000);        // ضبط سرعة I2C على 100kHz
+
+  dht.begin();                  // تشغيل حساس DHT22
+
+  ds18b20.begin();              // تشغيل حساس DS18B20
+
+  lcd.init();                   // تهيئة شاشة LCD
+
+  lcd.backlight();              // تشغيل إضاءة الشاشة
+
+  pinMode(FAN_RELAY, OUTPUT);
+
+  pinMode(PUMP_RELAY, OUTPUT);
+
+  pinMode(WINDOW_RELAY, OUTPUT);
+
+  digitalWrite(FAN_RELAY, HIGH);
+
+  digitalWrite(PUMP_RELAY, HIGH);
+
+  digitalWrite(WINDOW_RELAY, HIGH);
+
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+
+  lcd.print("SMART GREEN");
+
+  lcd.setCursor(0, 1);
+
+  lcd.print("HOUSE");
+
+  delay(2000);
+}
+// =====================================================
+// الدالة Loop
+// =====================================================
+
+void loop()
+{
+  // قراءة الرطوبة من DHT22
+  hum = dht.readHumidity();
+
+  // طلب قراءة الحرارة من DS18B20
+  ds18b20.requestTemperatures();
+
+  // قراءة درجة الحرارة
+  temp = ds18b20.getTempCByIndex(0);
+
+  // قراءة حساسات pH و TDS
+  phRaw = analogRead(PH_PIN);
+  tdsRaw = analogRead(TDS_PIN);
+
+  // التحقق من سلامة القراءات
+  if (isnan(hum) || temp == DEVICE_DISCONNECTED_C)
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("SENSOR ERROR    ");
+
+    lcd.setCursor(0, 1);
+    lcd.print("CHECK SENSORS   ");
+
+    Serial.println("Sensor Error");
+
+    delay(2000);
+    return;
+  }
+
+  // =====================================================
+  // التحكم في المروحة والنافذة
+  // =====================================================
+
+  if (temp < 25)
+  {
+    digitalWrite(FAN_RELAY, HIGH);
+
+    if (!windowClosed)
+    {
+      digitalWrite(WINDOW_RELAY, LOW);
+      delay(3000);
+      digitalWrite(WINDOW_RELAY, HIGH);
+      windowClosed = true;
+    }
+  }
+  else
+  {
+    digitalWrite(FAN_RELAY, LOW);
+    windowClosed = false;
+  }
+
+  // =====================================================
+  // التحكم في المضخة حسب الرطوبة
+  // =====================================================
+
+  if (hum < 40)
+  {
+    digitalWrite(PUMP_RELAY, LOW);
+  }
+  else
+  {
+    digitalWrite(PUMP_RELAY, HIGH);
+  }
+
+// =====================================================
+// عرض البيانات على الشاشة (صفحتان)
+// =====================================================
+
+// تبديل الصفحة كل 3 ثوان
+if (millis() - lastScreenChange >= 3000UL)
+{
+  lastScreenChange = millis();
+
+  // تبديل الصفحة
+  if (screenPage == false)
+    screenPage = true;
+  else
+    screenPage = false;
+
+  // مسح الشاشة مرة واحدة فقط عند تغيير الصفحة
+  lcd.clear();
+}
+
+// =====================================================
+// الصفحة الأولى : الحرارة والرطوبة
+// =====================================================
+if (screenPage == false)
+{
+  lcd.setCursor(0, 0);
+  lcd.print("T:");
+  lcd.print(temp, 1);
+  lcd.print("C ");
+
+  lcd.setCursor(9, 0);
+  lcd.print("H:");
+  lcd.print(hum, 0);
+  lcd.print("% ");
+
+  lcd.setCursor(0, 1);
+
+  if (temp >= 40)
+  {
+    lcd.print("HIGH TEMP !    ");
+  }
+  else if (temp >= 30)
+  {
+    lcd.print("MEDIUM TEMP    ");
+  }
+  else if (temp >= 25)
+  {
+    lcd.print("LOW TEMP       ");
+  }
+  else
+  {
+    lcd.print("NORMAL         ");
+  }
+}
+// =====================================================
+// الصفحة الثانية : pH و TDS
+// =====================================================
+else
+{
+  lcd.setCursor(0, 0);
+  lcd.print("pH RAW:");
+  lcd.print(phRaw);
+  lcd.print("    ");
+
+  lcd.setCursor(0, 1);
+  lcd.print("TDS:");
+  lcd.print(tdsRaw);
+  lcd.print("       ");
+}
+  // =====================================================
+  // إرسال البيانات إلى Serial Monitor
+  // =====================================================
+
+  Serial.print("Temperature = ");
+  Serial.print(temp);
+  Serial.print(" C  Humidity = ");
+  Serial.print(hum);
+
+  Serial.print(" %  pH_RAW = ");
+  Serial.print(phRaw);
+
+  Serial.print("  TDS_RAW = ");
+  Serial.println(tdsRaw);
+
+  delay(2000);
+}

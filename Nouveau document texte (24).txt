@@ -1,0 +1,225 @@
+#include <WiFi.h>
+#include <Firebase_ESP_Client.h>
+
+unsigned long lastCommand = 0;
+
+#include <DHT.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// ================== WIFI ==================
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+// ================== FIREBASE ==================
+#include "addons/TokenHelper.h"
+#include "addons/RTDBHelper.h"
+
+#define API_KEY "YOUR_FIREBASE_API_KEY"
+#define DATABASE_URL "https://smartgreenhouse-a054e-default-rtdb.firebaseio.com/"
+
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
+
+// ================== SENSORS ==================
+#define DHTPIN 4
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+
+#define ONE_WIRE_BUS 5
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
+// Analog sensors
+#define PH_PIN 34
+#define TDS_PIN 35
+
+// ================== OUTPUTS ==================
+#define FAN_LED 12
+#define WINDOW_LED 13
+#define PUMP_LED 14
+
+#define BUZZER 27
+
+// ================== LCD ==================
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// ================== TIMING ==================
+unsigned long lastSend = 0;
+unsigned long lastLCD = 0;
+bool page = 0;
+
+// ================== VALUES ==================
+float temp = 0;
+float hum = 0;
+float ph = 0;
+float tds = 0;
+
+// ================== SETUP ==================
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(FAN_LED, OUTPUT);
+  pinMode(WINDOW_LED, OUTPUT);
+  pinMode(PUMP_LED, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+
+  digitalWrite(FAN_LED, LOW);
+  digitalWrite(WINDOW_LED, LOW);
+  digitalWrite(PUMP_LED, LOW);
+  digitalWrite(BUZZER, LOW);
+
+  dht.begin();
+  sensors.begin();
+
+  lcd.init();
+  lcd.backlight();
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting WiFi");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(300);
+    Serial.print(".");
+  }
+
+  Serial.println("\nWiFi Connected");
+
+  // Firebase config
+  config.api_key = API_KEY;
+  config.database_url = DATABASE_URL;
+
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+}
+
+// ================== READ SENSORS ==================
+void readSensors() {
+  hum = dht.readHumidity();
+  temp = dht.readTemperature();
+
+  sensors.requestTemperatures();
+  float dsTemp = sensors.getTempCByIndex(0);
+
+  if (!isnan(temp)) temp = temp;
+  if (!isnan(hum)) hum = hum;
+
+  int phRaw = analogRead(PH_PIN);
+  int tdsRaw = analogRead(TDS_PIN);
+
+  ph = map(phRaw, 0, 4095, 0, 14);
+  tds = map(tdsRaw, 0, 4095, 0, 3000);
+}
+
+// ================== CONTROL LOGIC ==================
+void controlSystem() {
+
+  // FAN + WINDOW (Humidity)
+  if (hum > 80) {
+    digitalWrite(FAN_LED, HIGH);
+    digitalWrite(WINDOW_LED, HIGH);
+  } 
+  else if (hum < 60) {
+    digitalWrite(FAN_LED, LOW);
+    digitalWrite(WINDOW_LED, LOW);
+  }
+
+  // PUMP (TDS)
+  if (tds < 400) {
+    digitalWrite(PUMP_LED, HIGH);
+  } 
+  else if (tds > 1500) {
+    digitalWrite(PUMP_LED, LOW);
+  }
+
+  // BUZZER (pH + safety)
+  if (ph < 5.5 || ph > 7.5 || tds > 3000) {
+    digitalWrite(BUZZER, HIGH);
+  } else {
+    digitalWrite(BUZZER, LOW);
+  }
+}
+
+// ================== FIREBASE SEND ==================
+void sendFirebase() {
+
+  if (!Firebase.ready()) return;
+
+  Firebase.RTDB.setFloat(&fbdo, "/sensors/temperature", temp);
+  Firebase.RTDB.setFloat(&fbdo, "/sensors/humidity", hum);
+  Firebase.RTDB.setFloat(&fbdo, "/sensors/ph", ph);
+  Firebase.RTDB.setFloat(&fbdo, "/sensors/tds", tds);
+
+  Firebase.RTDB.setInt(&fbdo, "/actuators/fan", digitalRead(FAN_LED));
+  Firebase.RTDB.setInt(&fbdo, "/actuators/window", digitalRead(WINDOW_LED));
+  Firebase.RTDB.setInt(&fbdo, "/actuators/pump", digitalRead(PUMP_LED));
+}
+
+// ================== FIREBASE RECEIVE ==================
+void readCommands() {
+
+  if (Firebase.ready()) {
+
+    if (Firebase.RTDB.getInt(&fbdo, "/controls/fan")) {
+      digitalWrite(FAN_LED, fbdo.intData());
+    }
+
+    if (Firebase.RTDB.getInt(&fbdo, "/controls/window")) {
+      digitalWrite(WINDOW_LED, fbdo.intData());
+    }
+
+    if (Firebase.RTDB.getInt(&fbdo, "/controls/pump")) {
+      digitalWrite(PUMP_LED, fbdo.intData());
+    }
+  }
+}
+// ================== LCD ==================
+void updateLCD() {
+
+  lcd.clear();
+
+  if (page == 0) {
+    lcd.setCursor(0, 0);
+    lcd.print("T:");
+    lcd.print(temp);
+
+    lcd.setCursor(0, 1);
+    lcd.print("H:");
+    lcd.print(hum);
+  } 
+  else {
+    lcd.setCursor(0, 0);
+    lcd.print("PH:");
+    lcd.print(ph);
+
+    lcd.setCursor(0, 1);
+    lcd.print("TDS:");
+    lcd.print(tds);
+  }
+
+  page = !page;
+}
+
+// ================== LOOP ==================
+void loop() {
+
+  readSensors();
+  controlSystem();
+  readCommands();
+
+  // LCD update
+  if (millis() - lastLCD > 3000) {
+    updateLCD();
+    lastLCD = millis();
+  }
+
+  // Firebase send
+if (millis() - lastCommand > 1000) {
+  readCommands();
+  lastCommand = millis();
+}
+    delay(50);
+  }

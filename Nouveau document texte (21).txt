@@ -1,0 +1,877 @@
+تمام، ندمج لك الآن:
+
+✅ Firebase للتحكم من الهاتف
+✅ Dashboard بسيط (حالة + أزرار تشغيل/إيقاف)
+مع الحفاظ على شرطك: الأولوية دائمًا للتلقائي (AUTO override)
+
+سأعطيك تعديل عملي واضح + كود كامل إضافي جاهز للإدراج داخل مشروعك بدون تخريب أي جزء.
+
+🔥 أولاً: ما الذي سنضيفه؟
+
+سنضيف 3 أشياء:
+
+1) ربط ESP32 مع Firebase Realtime Database
+إرسال القيم (T°, Hum, pH, TDS)
+استقبال أوامر التحكم من الهاتف
+2) Dashboard (على الهاتف أو Android)
+أزرار:
+FAN ON/OFF
+PUMP ON/OFF
+WINDOW ON/OFF
+AUTO / MANUAL
+3) مزامنة فورية
+أي تغيير في Firebase → ينفذ مباشرة في ESP32
+⚙️ 1) إضافة المكتبات (أول الكود)
+
+أضف هذا مع باقي الـ includes:
+
+#include <WiFi.h>
+#include <FirebaseESP32.h>
+🌐 2) إعداد WiFi + Firebase (فوق setup)
+// =====================================================
+// WiFi + Firebase إعداد الاتصال
+// =====================================================
+
+#define WIFI_SSID "YOUR_WIFI_NAME"
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+
+#define FIREBASE_HOST "https://smartgreenhouse-a054e-default-rtdb.firebaseio.com/"
+#define FIREBASE_AUTH "YOUR_DATABASE_SECRET_OR_TOKEN"
+
+FirebaseData fbdo;
+FirebaseConfig config;
+FirebaseAuth auth;
+🔌 3) الاتصال في setup()
+
+أضف هذا داخل setup() بعد Serial.begin:
+
+// =====================================================
+// تشغيل WiFi
+// =====================================================
+
+WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+while (WiFi.status() != WL_CONNECTED)
+{
+  delay(500);
+  Serial.print(".");
+}
+
+Serial.println("\nWiFi Connected");
+
+// =====================================================
+// تشغيل Firebase
+// =====================================================
+
+config.database_url = FIREBASE_HOST;
+config.signer.tokens.legacy_token = FIREBASE_AUTH;
+
+Firebase.begin(&config, &auth);
+Firebase.reconnectWiFi(true);
+📤 4) إرسال البيانات إلى Firebase (داخل loop)
+
+أضف هذا في آخر loop (قبل delay):
+
+// =====================================================
+// إرسال البيانات إلى Firebase (Dashboard)
+// =====================================================
+
+Firebase.setFloat(fbdo, "/sensor/temp", temp);
+Firebase.setFloat(fbdo, "/sensor/hum", hum);
+Firebase.setFloat(fbdo, "/sensor/ph", phValue);
+Firebase.setInt(fbdo, "/sensor/tds", (int)tdsValue);
+📥 5) قراءة أوامر من Firebase (Dashboard Controls)
+
+أضف هذا داخل loop أيضاً:
+
+// =====================================================
+// قراءة أوامر التحكم من Firebase
+// =====================================================
+
+if (Firebase.getString(fbdo, "/control/mode"))
+{
+  String mode = fbdo.stringData();
+
+  if (mode == "AUTO") AUTO_MODE = true;
+  if (mode == "MANUAL") AUTO_MODE = false;
+}
+
+if (!AUTO_MODE)
+{
+  if (Firebase.getString(fbdo, "/control/fan"))
+  {
+    digitalWrite(FAN_RELAY, fbdo.stringData() == "ON");
+  }
+
+  if (Firebase.getString(fbdo, "/control/pump"))
+  {
+    digitalWrite(PUMP_RELAY, fbdo.stringData() == "ON");
+  }
+
+  if (Firebase.getString(fbdo, "/control/window"))
+  {
+    digitalWrite(WINDOW_RELAY, fbdo.stringData() == "ON");
+  }
+
+  if (Firebase.getString(fbdo, "/control/buzzer"))
+  {
+    digitalWrite(BUZZER_PIN, fbdo.stringData() == "ON");
+  }
+}
+⚠️ 6) حماية النظام (مهم جداً)
+
+حتى لو Firebase في MANUAL:
+
+// FORCE AUTO في الحالات الخطيرة
+if (tdsValue > 3000 || phValue < 5.0 || phValue > 8.0)
+{
+  AUTO_MODE = true;
+  Firebase.setString(fbdo, "/control/mode", "AUTO");
+}
+📱 7) Dashboard (هيكل البيانات في Firebase)
+
+هذا الشكل الذي ستراه في التطبيق:
+
+control:
+  mode: "AUTO"
+  fan: "OFF"
+  pump: "OFF"
+  window: "OFF"
+  buzzer: "OFF"
+
+sensor:
+  temp: 26.4
+  hum: 61
+  ph: 6.8
+  tds: 1200
+📲 8) تطبيق Android (Dashboard بسيط)
+
+في Android (Jetpack Compose أو XML) تعمل:
+
+أزرار:
+زر AUTO / MANUAL
+زر FAN
+زر PUMP
+زر WINDOW
+
+كل زر يكتب في Firebase:
+
+FirebaseDatabase.getInstance()
+  .getReference("control/fan")
+  .setValue("ON")
+🔥 النتيجة النهائية
+
+✔ تحكم كامل من الهاتف
+✔ مراقبة لحظية للبيانات
+✔ تحكم يدوي
+✔ نظام تلقائي يحمي نفسه
+✔ Dashboard مباشر
+✔ ESP32 يعمل كـ Smart Controller حقيقي
+
+⚡ إذا تريد الخطوة التالية (مهم جداً)
+
+أقدر أطور لك:
+
+🔥 1) تطبيق Android كامل جاهز APK (واجهة احترافية)
+🔥 2) رسم Graph للحرارة والرطوبة داخل التطبيق
+🔥 3) إشعارات فورية (Firebase Cloud Messaging)
+🔥 4) AI بسيط يتوقع احتياج النبات
+
+قلّي فقط: "APK" أو "Graph" أو "Notifications" أو "AI"
+
+6و7وو8 ام اعملهم لم افهم كيف
+
+تمام، خلّيني أبسّطها لك عملياً خطوة خطوة بدون تعقيد، لأنك الآن وصلت لمرحلة “نظام كامل” وليس كود فقط.
+
+سأشرح لك (6 + 7 + 8) بطريقة تنفيذ مباشرة:
+
+✅ أولاً: كيف تفهم الفكرة ببساطة
+
+أنت عندك:
+
+ESP32 = “المتحكم”
+
+يرسل ويستقبل بيانات
+
+Firebase = “السحابة”
+
+تخزن:
+
+قراءات الحساسات
+أوامر الهاتف
+الهاتف = “التحكم”
+📌 6) حماية النظام (Safety Override) — ماذا تفعل؟
+الفكرة:
+
+حتى لو الهاتف قال “إطفاء كل شيء”،
+لو الحالة خطيرة → ESP32 يتجاهل الهاتف ويشتغل حماية تلقائية.
+
+✔ أين تضيفه؟
+
+داخل loop() بعد حساب:
+
+phValue
+tdsValue
+✔ الكود (انسخه كما هو)
+// =====================================================
+// حماية الطوارئ (Safety Override)
+// =====================================================
+
+if (tdsValue > 3000 || phValue < 5.0 || phValue > 8.0)
+{
+  AUTO_MODE = true;  // إجبار النظام على التلقائي
+
+  Firebase.setString(fbdo, "/control/mode", "AUTO");
+
+  digitalWrite(FRESH_WATER_PUMP, HIGH);
+  digitalWrite(RED_LED, HIGH);
+  digitalWrite(BUZZER_PIN, HIGH);
+
+  digitalWrite(PUMP_RELAY, LOW);
+
+  Serial.println("EMERGENCY MODE ACTIVATED");
+}
+📌 7) شكل لوحة التحكم (Dashboard) — كيف تعملها؟
+أنت لا تحتاج تصميم معقد
+
+في Firebase فقط تنشئ هذا:
+
+control
+   mode
+   fan
+   pump
+   window
+   buzzer
+sensor
+   temp
+   hum
+   ph
+   tds
+✔ كيف تنشئه؟
+ادخل Firebase:
+Realtime Database
+اضغط “+”
+أضف:
+مثال:
+control → object
+sensor → object
+
+ثم داخل control:
+
+mode = AUTO
+fan = OFF
+pump = OFF
+window = OFF
+buzzer = OFF
+✔ هذا هو “Dashboard”
+
+الهاتف مجرد يغيّر هذه القيم
+
+📱 مثال تحكم من الهاتف (Android)
+
+إذا زر تشغيل المروحة:
+
+FirebaseDatabase.getInstance()
+  .getReference("control/fan")
+  .setValue("ON")
+
+إطفاء:
+
+.setValue("OFF")
+📌 8) تطبيق Android كامل (كيف تبدأه فعلياً)
+أنت تحتاج فقط هذا:
+1) Android Studio
+2) مشروع جديد (Empty Activity)
+✔ داخل build.gradle (Module)
+
+أضف:
+
+implementation 'com.google.firebase:firebase-database:20.3.1'
+✔ في MainActivity (فكرة بسيطة جداً)
+زر تشغيل المروحة:
+val db = FirebaseDatabase.getInstance().reference
+
+buttonFanOn.setOnClickListener {
+    db.child("control/fan").setValue("ON")
+}
+
+buttonFanOff.setOnClickListener {
+    db.child("control/fan").setValue("OFF")
+}
+✔ زر AUTO / MANUAL:
+buttonAuto.setOnClickListener {
+    db.child("control/mode").setValue("AUTO")
+}
+
+buttonManual.setOnClickListener {
+    db.child("control/mode").setValue("MANUAL")
+}
+📊 إضافة شاشة عرض بيانات (Graph) — بسيطة جداً
+
+إذا تريد رسم حرارة:
+
+تحتاج مكتبة:
+MPAndroidChart
+✔ مثال سريع:
+val entry = Entry(xValue, temperature)
+lineChartData.add(entry)
+🚨 النتيجة النهائية لما تطبّق هذا كله:
+
+✔ تفتح الهاتف
+✔ تشوف الحرارة والرطوبة
+✔ تضغط زر → ESP32 يستجيب فوراً
+✔ لو خطر → النظام يتجاهل الهاتف ويشتغل حماية
+✔ عندك Smart Greenhouse حقيقي
+
+⚡ مهم جداً (قبل ما نكمل)
+
+إذا تريد أكملك للمرحلة الاحترافية قلّي واحد من هذو:
+
+🔥 "APK جاهز"
+
+→ أعطيك تطبيق كامل جاهز (تصميم + أزرار + Firebase)
+
+📊 "Graph كامل"
+
+→ شاشة رسومات احترافية للحرارة والرطوبة
+
+🔔 "Notifications"
+
+→ إشعارات عند الخطر في الهاتف
+
+🤖 "AI"
+
+→ نظام يتعلم ويقرر وحده أفضل ري
+
+قول فقط الكلمة اللي تريدها، ونبنيها مباشرة خطوة خطوة بدون تعقيد 👍
+
+اضفت 6 و اما التطبيق عندي موجود
+
+واضح أنك وصلت لمرحلة الربط مع Firebase، لكن ضيعت بين الخطوات.
+
+خلّيني نرتبها لك ببساطة (وخاصة 6 و7 و8 اللي سألت عليهم):
+
+✅ أولاً: بما أنك قلت “أضفت 6”
+
+غالباً تقصد:
+✔ أضفت مكتبة Firebase في كود ESP32 أو في التطبيق
+تمام، هذا خطوة صحيحة.
+
+📌 الآن ماذا تفعل (الخطوات 6 و7 و8 بشكل صحيح)
+6) ربط ESP32 مع Firebase (في الكود)
+
+لازم يكون عندك في كود ESP32:
+
+WiFi متصل
+Firebase Config (URL + API Key)
+تسجيل الدخول (anonymous أو email)
+
+🔴 إذا ما أضفت هذا الجزء، الجهاز لن يرسل أي بيانات
+
+7) إنشاء قاعدة البيانات (Realtime Database)
+
+في Firebase:
+
+ادخل Firebase Console
+Realtime Database
+اختر Create Database
+اختر test mode (مؤقتاً)
+
+ثم ستشوف رابط مثل:
+
+https://xxxx-default-rtdb.firebaseio.com/
+
+هذا لازم تضعه في الكود.
+
+8) شكل البيانات (Data Structure)
+
+لازم تحدد كيف ستُخزن البيانات.
+
+مثال بسيط لمشروعك:
+
+smartGreenhouse
+   temperature: 25.3
+   humidity: 60
+   ph: 6.8
+   tds: 900
+   fan: 0
+   pump: 1
+🔥 أهم نقطة (هنا الناس تغلط)
+
+حتى لو:
+
+التطبيق عندك جاهز ✔
+قاعدة البيانات جاهزة ✔
+
+❌ إذا ESP32 لا يكتب في Firebase → التطبيق لن يظهر شيء
+
+⚠️ سؤال مهم لك الآن (ضروري)
+
+باش نكمل معك صح بدون تخبيص:
+
+هل تريد:
+
+A)
+
+📱 التطبيق فقط يعرض البيانات (قراءة فقط)
+
+B)
+
+📱 التطبيق يتحكم + ESP32 يقرأ أوامر (تشغيل/إيقاف)
+
+C)
+
+📱 الاثنين مع بعض (مراقبة + تحكم يدوي + تلقائي)
+
+قلّي A أو B أو C
+وبعدها أعطيك كود كامل جاهز ESP32 + Firebase بدون نقص + متوافق مع مشروعك الحالي
+
+
+
+
+
+
+// =====================================================    // خط فاصل للتنظيم فقط
+// البيت الزراعي الذكي - ESP32                            // اسم المشروع
+// DHT22 + DS18B20 + LCD I2C + 3 LEDs                     // المكونات
+// =====================================================    // نهاية العنوان
+
+#include <Wire.h>                                           // مكتبة I2C للتواصل مع الشاشة
+#include <LiquidCrystal_I2C.h>                              // مكتبة شاشة LCD عبر I2C
+#include <DHT.h>                                            // مكتبة حساس الحرارة والرطوبة DHT22
+#include <OneWire.h>                                        // بروتوكول OneWire للحساسات
+#include <DallasTemperature.h>                              // مكتبة DS18B20 لقراءة الحرارة
+#include <WiFi.h>
+#include <FirebaseESP32.h>
+// =====================================================    // إعداد حساس DHT22
+#define DHTPIN 4                                            // تحديد رجل الحساس
+#define DHTTYPE DHT22                                       // نوع الحساس DHT22
+
+// =====================================================    // إعداد شاشة LCD
+#define SDA_PIN 8                                           // خط البيانات I2C
+#define SCL_PIN 9                                           // خط الساعة I2C
+
+// =====================================================    // إعداد DS18B20
+#define ONE_WIRE_BUS 5                                      // رجل الحساس
+
+// =====================================================    // مخارج التحكم
+#define FAN_RELAY     16                                   // مروحة
+#define PUMP_RELAY    17                                   // مضخة
+#define WINDOW_RELAY  18                                   // نافذة
+#define BUZZER_PIN    15                                   // جرس
+#define FERTILIZER_PUMP  6                                // مضخة سماد
+#define FRESH_WATER_PUMP 7                                // مضخة ماء
+#define GREEN_LED        10                               // LED أخضر
+#define YELLOW_LED       11                               // LED أصفر
+#define RED_LED          12                               // LED أحمر
+
+// =====================================================    // حساسات المياه
+#define PH_PIN   1                                         // حساس pH
+#define TDS_PIN  2                                         // حساس TDS
+
+// =====================================================    // إنشاء الكائنات
+DHT dht(DHTPIN, DHTTYPE);                                  // إنشاء كائن DHT
+OneWire oneWire(ONE_WIRE_BUS);                             // تهيئة OneWire
+DallasTemperature ds18b20(&oneWire);                       // ربط DS18B20
+LiquidCrystal_I2C lcd(0x27, 16, 2);                        // شاشة LCD
+
+// =====================================================    // المتغيرات العامة
+float temp = 0;                                            // درجة الحرارة
+float hum = 0;                                             // الرطوبة
+bool windowClosed = false;                                 // حالة النافذة
+int phRaw = 0;                                             // قراءة pH الخام
+int tdsRaw = 0;                                            // قراءة TDS الخام
+unsigned long lastScreenChange = 0;                        // وقت تغيير الشاشة
+bool screenPage = false;                                   // الصفحة الحالية
+
+// =====================================================
+// وضع التشغيل (Auto / Manual)
+// =====================================================
+
+bool AUTO_MODE = true;          // true = تلقائي / false = يدوي
+String command = "";            // أوامر من Serial
+// =====================================================    // نظام الرش التلقائي
+unsigned long lastSprayTime = 0;                            // آخر رش
+const unsigned long sprayInterval = 300000UL;              // كل 5 دقائق
+const unsigned long sprayDuration = 5000UL;                // مدة الرش
+
+// =====================================================
+// قراءة أوامر التحكم اليدوي من Serial
+// =====================================================
+
+void readSerialCommand()
+{
+  if (Serial.available())
+  {
+    command = Serial.readStringUntil('\n');
+    command.trim();
+
+    // تبديل الوضع
+    if (command == "AUTO")
+    {
+      AUTO_MODE = true;
+      Serial.println("MODE: AUTO");
+    }
+
+    else if (command == "MANUAL")
+    {
+      AUTO_MODE = false;
+      Serial.println("MODE: MANUAL");
+    }
+
+    // التحكم اليدوي (يعمل فقط في MANUAL)
+    if (!AUTO_MODE)
+    {
+      if (command == "FAN ON") digitalWrite(FAN_RELAY, HIGH);
+      if (command == "FAN OFF") digitalWrite(FAN_RELAY, LOW);
+
+      if (command == "PUMP ON") digitalWrite(PUMP_RELAY, HIGH);
+      if (command == "PUMP OFF") digitalWrite(PUMP_RELAY, LOW);
+
+      if (command == "WINDOW ON") digitalWrite(WINDOW_RELAY, HIGH);
+      if (command == "WINDOW OFF") digitalWrite(WINDOW_RELAY, LOW);
+
+      if (command == "BUZZER ON") digitalWrite(BUZZER_PIN, HIGH);
+      if (command == "BUZZER OFF") digitalWrite(BUZZER_PIN, LOW);
+    }
+  }
+} 
+
+// =====================================================
+// WiFi + Firebase إعداد الاتصال
+// =====================================================
+
+#define WIFI_SSID "YOUR_WIFI_NAME"
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+
+#define FIREBASE_HOST "https://smartgreenhouse-a054e-default-rtdb.firebaseio.com/"
+#define FIREBASE_AUTH "YOUR_DATABASE_SECRET_OR_TOKEN"
+
+FirebaseData fbdo;
+FirebaseConfig config;
+FirebaseAuth auth;
+
+void setup()                                                // بداية الإعداد
+{
+  Serial.begin(115200);                                     // تشغيل المراقب التسلسلي
+
+// =====================================================
+// تشغيل WiFi
+// =====================================================
+
+WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+while (WiFi.status() != WL_CONNECTED)
+{
+  delay(500);
+  Serial.print(".");
+}
+
+Serial.println("\nWiFi Connected");
+
+// =====================================================
+// تشغيل Firebase
+// =====================================================
+
+config.database_url = FIREBASE_HOST;
+config.signer.tokens.legacy_token = FIREBASE_AUTH;
+
+Firebase.begin(&config, &auth);
+Firebase.reconnectWiFi(true);
+
+  Wire.begin(SDA_PIN, SCL_PIN);                            // تشغيل I2C
+  Wire.setClock(100000);                                   // سرعة I2C
+
+  dht.begin();                                             // تشغيل DHT22
+  ds18b20.begin();                                         // تشغيل DS18B20
+
+  lcd.init();                                              // تشغيل الشاشة
+  lcd.backlight();                                         // إضاءة الشاشة
+
+  pinMode(FAN_RELAY, OUTPUT);                              // مخرج المروحة
+  pinMode(PUMP_RELAY, OUTPUT);                              // مخرج المضخة
+  pinMode(WINDOW_RELAY, OUTPUT);                           // مخرج النافذة
+  pinMode(BUZZER_PIN, OUTPUT);                             // مخرج الجرس
+
+  pinMode(FERTILIZER_PUMP, OUTPUT);                        // مضخة السماد
+  pinMode(FRESH_WATER_PUMP, OUTPUT);                       // مضخة الماء
+  pinMode(GREEN_LED, OUTPUT);                              // LED أخضر
+  pinMode(YELLOW_LED, OUTPUT);                             // LED أصفر
+  pinMode(RED_LED, OUTPUT);                                // LED أحمر
+
+  digitalWrite(FAN_RELAY, LOW);                            // إطفاء المروحة
+  digitalWrite(PUMP_RELAY, LOW);                           // إطفاء المضخة
+  digitalWrite(WINDOW_RELAY, LOW);                         // إطفاء النافذة
+  digitalWrite(BUZZER_PIN, LOW);                           // إطفاء الجرس
+
+  lcd.clear();                                              // مسح الشاشة
+  lcd.setCursor(0, 0);                                     // بداية السطر الأول
+  lcd.print("SMART GREEN");                                // رسالة البداية
+  lcd.setCursor(0, 1);                                     // السطر الثاني
+  lcd.print("HOUSE");                                      // رسالة البداية
+  delay(2000);                                              // انتظار
+}
+
+void loop()                                                 // الحلقة الرئيسية
+{
+  readSerialCommand();   // قراءة الأوامر في كل دورة
+  hum = dht.readHumidity();                                // قراءة الرطوبة
+
+  ds18b20.requestTemperatures();                           // طلب حرارة
+  temp = ds18b20.getTempCByIndex(0);                      // قراءة الحرارة
+
+  phRaw = analogRead(PH_PIN);                             // قراءة pH
+  tdsRaw = analogRead(TDS_PIN);                            // قراءة TDS
+
+  float tdsValue = map(tdsRaw, 0, 4095, 0, 4000);         // تحويل TDS
+
+  digitalWrite(FERTILIZER_PUMP, LOW);                     // إطفاء السماد
+  digitalWrite(FRESH_WATER_PUMP, LOW);                    // إطفاء الماء
+  digitalWrite(GREEN_LED, LOW);                           // إطفاء الأخضر
+  digitalWrite(YELLOW_LED, LOW);                          // إطفاء الأصفر
+  digitalWrite(RED_LED, LOW);                             // إطفاء الأحمر
+
+  if (tdsValue < 400)                                     // نقص غذاء
+  {
+    digitalWrite(FERTILIZER_PUMP, HIGH);                 // تشغيل السماد
+    digitalWrite(YELLOW_LED, HIGH);                      // تحذير
+  }
+
+  else if (tdsValue >= 800 && tdsValue <= 1500)          // طبيعي
+  {
+    digitalWrite(GREEN_LED, HIGH);                       // حالة جيدة
+  }
+
+  else if (tdsValue > 2000 && tdsValue <= 3000)          // عالي
+  {
+    digitalWrite(FRESH_WATER_PUMP, HIGH);                // تخفيف
+    digitalWrite(RED_LED, HIGH);                         // خطر
+    digitalWrite(FERTILIZER_PUMP, LOW);                  // إيقاف السماد
+  }
+
+ else if (tdsValue > 3000)
+{
+  // إجبار النظام على التلقائي في الحالات الخطيرة
+  AUTO_MODE = true;
+
+  digitalWrite(FRESH_WATER_PUMP, HIGH);
+  digitalWrite(RED_LED, HIGH);
+  digitalWrite(BUZZER_PIN, HIGH);
+
+  digitalWrite(PUMP_RELAY, LOW);
+
+  Serial.println("!!! EMERGENCY AUTO OVERRIDE !!!");
+}
+  float phVoltage = (phRaw * 3.3) / 4095.0;              // تحويل الجهد
+  float phValue = 7.0 + ((2.50 - phVoltage) / 0.18);     // حساب pH
+
+  if (phValue < 5.5 || phValue > 7.5)                    // خارج النطاق
+  {
+    digitalWrite(BUZZER_PIN, HIGH);                     // إنذار
+  }
+  else
+  {
+    digitalWrite(BUZZER_PIN, LOW);                      // إيقاف
+  }
+
+// =====================================================
+// حماية الطوارئ (Safety Override)
+// =====================================================
+
+if (tdsValue > 3000 || phValue < 5.0 || phValue > 8.0)
+{
+  AUTO_MODE = true;  // إجبار النظام على التلقائي
+
+  Firebase.setString(fbdo, "/control/mode", "AUTO");
+
+  digitalWrite(FRESH_WATER_PUMP, HIGH);
+  digitalWrite(RED_LED, HIGH);
+  digitalWrite(BUZZER_PIN, HIGH);
+
+  digitalWrite(PUMP_RELAY, LOW);
+
+  Serial.println("EMERGENCY MODE ACTIVATED");
+}
+  // =====================================================  
+  // التحقق من سلامة القراءات
+  // =====================================================  
+
+  if (isnan(hum) || temp == DEVICE_DISCONNECTED_C)        // إذا فشل الحساس
+  {
+    lcd.setCursor(0, 0);                                 // السطر الأول
+    lcd.print("SENSOR ERROR    ");                       // خطأ حساسات
+
+    lcd.setCursor(0, 1);                                 // السطر الثاني
+    lcd.print("CHECK SENSORS   ");                       // تحقق من الحساسات
+
+    Serial.println("Sensor Error");                      // طباعة خطأ
+
+    delay(2000);                                          // انتظار
+    return;                                               // إعادة loop من البداية
+  }
+
+  // =====================================================  
+  // التحكم في الرطوبة
+  // =====================================================  
+
+  digitalWrite(FAN_RELAY, LOW);                          // إطفاء المروحة
+  digitalWrite(WINDOW_RELAY, LOW);                       // إطفاء النافذة
+  digitalWrite(PUMP_RELAY, LOW);                         // إطفاء المضخة
+
+  if (AUTO_MODE && hum < 60)                                          // رطوبة منخفضة
+  {
+    if (millis() - lastSprayTime >= sprayInterval)       // وقت الرش
+    {
+      lastSprayTime = millis();                          // تحديث الوقت
+
+      digitalWrite(PUMP_RELAY, HIGH);                  // تشغيل مضخة
+      delay(sprayDuration);                             // مدة الرش
+      digitalWrite(PUMP_RELAY, LOW);                   // إيقاف
+
+      delay(3000);                                      // انتظار
+
+      digitalWrite(PUMP_RELAY, HIGH);                  // رش 2
+      delay(sprayDuration);
+      digitalWrite(PUMP_RELAY, LOW);
+
+      delay(3000);
+
+      digitalWrite(PUMP_RELAY, HIGH);                  // رش 3
+      delay(sprayDuration);
+      digitalWrite(PUMP_RELAY, LOW);
+    }
+  }
+
+  else if (hum >= 60 && hum <= 80)                      // طبيعي
+  {
+    // لا شيء
+  }
+
+  else if (AUTO_MODE && hum > 80)                                    // رطوبة عالية
+  {
+    digitalWrite(FAN_RELAY, HIGH);                     // تشغيل مروحة
+    digitalWrite(WINDOW_RELAY, HIGH);                  // فتح نافذة
+  }
+
+  // =====================================================  
+  // تغيير صفحات الشاشة
+  // =====================================================  
+
+  if (millis() - lastScreenChange >= 3000UL)           // كل 3 ثواني
+  {
+    lastScreenChange = millis();                       // تحديث الوقت
+
+    if (screenPage == false)                           // تبديل الصفحة
+      screenPage = true;
+    else
+      screenPage = false;
+
+    lcd.clear();                                       // مسح الشاشة
+  }
+
+  // =====================================================  
+  // الصفحة 1 (حرارة + رطوبة)
+  // =====================================================  
+
+  if (screenPage == false)
+  {
+    lcd.setCursor(0, 0);                              // السطر الأول
+    lcd.print("T:");                                 // حرارة
+    lcd.print(temp, 1);                              // قيمة الحرارة
+    lcd.print("C ");
+
+    lcd.setCursor(9, 0);                             // رطوبة
+    lcd.print("H:");
+    lcd.print(hum, 0);
+    lcd.print("%");
+
+    lcd.setCursor(0, 1);                             // السطر الثاني
+
+    // لا يوجد نص إضافي مفعل حالياً (معلق)
+  }
+
+  // =====================================================  
+  // الصفحة 2 (pH + TDS)
+  // =====================================================  
+
+  else
+  {
+    lcd.setCursor(0, 0);                             // pH
+    lcd.print("pH:");
+    lcd.print(phValue, 1);
+    lcd.print("   ");
+
+    lcd.setCursor(0, 1);                             // TDS
+    lcd.print("TDS:");
+    lcd.print((int)tdsValue);
+    lcd.print("ppm");
+  }
+
+  // =====================================================  
+  // إرسال البيانات للسيريال
+  // =====================================================  
+
+  Serial.print("Temperature = ");                    // حرارة
+  Serial.print(temp);
+
+  Serial.print(" C  Humidity = ");                  // رطوبة
+  Serial.print(hum);
+
+  Serial.print(" %  pH = ");                        // pH
+  Serial.print(phValue, 1);
+
+  Serial.print("  TDS = ");                         // TDS
+  Serial.print((int)tdsValue);
+
+  Serial.println(" ppm");                           // نهاية السطر
+
+// =====================================================
+// قراءة أوامر التحكم من Firebase
+// =====================================================
+
+if (Firebase.getString(fbdo, "/control/mode"))
+{
+  String mode = fbdo.stringData();
+
+  if (mode == "AUTO") AUTO_MODE = true;
+  if (mode == "MANUAL") AUTO_MODE = false;
+}
+
+if (!AUTO_MODE)
+{
+  if (Firebase.getString(fbdo, "/control/fan"))
+  {
+    digitalWrite(FAN_RELAY, fbdo.stringData() == "ON");
+  }
+
+  if (Firebase.getString(fbdo, "/control/pump"))
+  {
+    digitalWrite(PUMP_RELAY, fbdo.stringData() == "ON");
+  }
+
+  if (Firebase.getString(fbdo, "/control/window"))
+  {
+    digitalWrite(WINDOW_RELAY, fbdo.stringData() == "ON");
+  }
+
+  if (Firebase.getString(fbdo, "/control/buzzer"))
+  {
+    digitalWrite(BUZZER_PIN, fbdo.stringData() == "ON");
+  }
+}
+
+// =====================================================
+// إرسال البيانات إلى Firebase (Dashboard)
+// =====================================================
+
+Firebase.setFloat(fbdo, "/sensor/temp", temp);
+Firebase.setFloat(fbdo, "/sensor/hum", hum);
+Firebase.setFloat(fbdo, "/sensor/ph", phValue);
+Firebase.setInt(fbdo, "/sensor/tds", (int)tdsValue);
+
+  // =====================================================  
+  // تأخير الدورة
+  // =====================================================  
+
+  delay(2000);                                      // انتظار قبل التكرار
+} 

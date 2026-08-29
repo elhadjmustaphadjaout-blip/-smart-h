@@ -1,0 +1,236 @@
+#include <WiFi.h>
+#include <Firebase_ESP_Client.h>
+
+#include <DHT.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+unsigned long lastRead = 0;
+
+// ================= WIFI =================
+#define WIFI_SSID "D-Link"
+#define WIFI_PASSWORD "djaoutSETIF19061972"
+
+// ================= FIREBASE =================
+#define API_KEY "AIzaSyD9yav4qKgdw5iZbN81lb9yr_ojjrUwfsg"
+#define DATABASE_URL "https://smartgreenhouse-a054e-default-rtdb.firebaseio.com"
+
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
+
+// ================= SENSORS =================
+#define DHTPIN 4
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+
+#define ONE_WIRE_BUS 5
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature ds18b20(&oneWire);
+
+#define PH_PIN 34
+#define TDS_PIN 35
+
+// ================= TIMERS =================
+unsigned long lastSend = 0;
+
+// ================= VALUES =================
+float h, t, dsTemp, ph, tds;
+
+void setup() {
+  Serial.begin(115200);
+  delay(2000);
+Serial.println("START SETUP");
+  // WiFi
+  Serial.println("STEP 1");
+  WiFi.mode(WIFI_STA);
+WiFi.disconnect(true);
+delay(1000);
+WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+Serial.println("STEP 2");
+unsigned long wifiStart = millis();
+
+
+while (WiFi.status() != WL_CONNECTED &&
+       millis() - wifiStart < 20000)
+{
+  delay(500);
+  Serial.print(".");
+  Serial.print(" Status=");
+Serial.println(WiFi.status());
+}
+
+if (WiFi.status() == WL_CONNECTED)
+{
+  Serial.println("\nWiFi Connected");
+  Serial.print("IP = ");
+Serial.println(WiFi.localIP());
+}
+else
+{
+  Serial.println("\nWiFi Failed");
+}
+  
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+
+Serial.print("Waiting NTP");
+
+time_t now = time(nullptr);
+
+while (now < 100000)
+{
+  delay(500);
+  Serial.print(".");
+  now = time(nullptr);
+}
+
+Serial.println();
+Serial.println("Time OK");
+
+  // Firebase config
+  config.api_key = API_KEY;
+  config.database_url = DATABASE_URL;
+  config.signer.test_mode = true;
+config.timeout.serverResponse = 10000;
+
+Serial.println("STEP 3");
+Serial.println("Free Heap Before Firebase:");
+Serial.println(ESP.getFreeHeap());
+
+configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+
+//time_t now = time(nullptr);
+
+//Serial.print("Waiting Time");
+
+//while (now < 100000)
+//{
+  //delay(500);
+  //Serial.print(".");
+  //now = time(nullptr);
+//}
+
+Serial.println();
+Serial.print("Unix Time = ");
+Serial.println(now);
+  Firebase.begin(&config, &auth);
+  fbdo.setResponseSize(4096);
+  fbdo.setBSSLBufferSize(8192, 2048);
+  unsigned long firebaseWait = millis();
+
+while (!Firebase.ready() &&
+       millis() - firebaseWait < 15000)
+{
+  delay(100);
+  Serial.print("#");
+}
+
+Serial.println();
+Serial.print("Firebase Ready Final = ");
+Serial.println(Firebase.ready());
+Serial.print("WiFi Status After Firebase = ");
+Serial.println(WiFi.status());
+Serial.print("Firebase Ready = ");
+Serial.println(Firebase.ready());
+
+Firebase.reconnectWiFi(true);
+Firebase.setDoubleDigits(5);
+  // Sensors
+  dht.begin();
+  ds18b20.begin();
+
+  Serial.println("SYSTEM READY");
+ Serial.print("Free Heap After Firebase = ");
+Serial.println(ESP.getFreeHeap());
+}
+
+void readSensors() {
+
+ float newH = dht.readHumidity();
+float newT = dht.readTemperature();
+
+if (!isnan(newH))
+  h = newH;
+
+if (!isnan(newT))
+  t = newT;
+
+  ds18b20.requestTemperatures();
+  float temp = ds18b20.getTempCByIndex(0);
+
+if (temp != DEVICE_DISCONNECTED_C)
+{
+  dsTemp = temp;
+}
+
+  ph = 0;
+tds = 0;
+}
+
+void sendToFirebase()
+{
+  Serial.println("SEND START");
+
+  Serial.print("WiFi Status = ");
+  Serial.println(WiFi.status());
+
+  Serial.print("Firebase.ready() = ");
+  Serial.println(Firebase.ready());
+
+  if (Firebase.ready())
+  {
+
+    if (!Firebase.RTDB.setFloat(&fbdo, "/sensors/temperature", t))
+{
+  Serial.println(fbdo.errorReason());
+}
+   if (!Firebase.RTDB.setFloat(&fbdo, "/sensors/humidity", h))
+{
+  Serial.print("HUM ERROR: ");
+  Serial.println(fbdo.errorReason());
+}
+
+if (!Firebase.RTDB.setFloat(&fbdo, "/sensors/ds18b20", dsTemp))
+{
+  Serial.print("DS ERROR: ");
+  Serial.println(fbdo.errorReason());
+}
+
+if (!Firebase.RTDB.setFloat(&fbdo, "/sensors/ph", ph))
+{
+  Serial.print("PH ERROR: ");
+  Serial.println(fbdo.errorReason());
+}
+
+if (!Firebase.RTDB.setFloat(&fbdo, "/sensors/tds", tds))
+{
+  Serial.print("TDS ERROR: ");
+  Serial.println(fbdo.errorReason());
+}
+    Serial.println("SEND END");
+  }
+}
+
+void loop() {
+
+  // قراءة حساسات كل 2 ثانية
+  if (millis() - lastRead >= 2000)
+{
+  lastRead = millis();
+
+  readSensors();
+
+  Serial.print("T:");
+  Serial.print(t);
+  Serial.print(" H:");
+  Serial.print(h);
+  Serial.print(" PH:");
+  Serial.print(ph);
+  Serial.print(" TDS:");
+  Serial.println(tds);
+}
+  // إرسال Firebase كل 7 ثواني (مهم جداً)
+  if (millis() - lastSend > 7000) {
+    sendToFirebase();
+    lastSend = millis();
+  }
+}

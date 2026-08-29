@@ -1,0 +1,359 @@
+...........
+WiFi Connected
+IP : 192.168.1.9
+Waiting NTP.....................................
+Time OK
+Firebase SignUp OK
+Waiting Firebase
+Firebase Connected
+Temperature = 29.94 C  Humidity = 34.30 %  pH = 14.8  TDS = 0 ppm
+Temperature = 29.87 C  Humidity = 34.20 %  pH = 16.5  TDS = 0 ppm                               في التطبيق  كل المستشعرات 00 
+
+بما أن الـ Serial Monitor يعرض القيم الصحيحة:
+
+Temperature = 29.94 C
+Humidity = 34.30 %
+pH = 14.8
+TDS = 0 ppm
+
+فهذا يعني أن الحساسات تعمل، والمشكلة ليست في قراءتها، بل في رفع البيانات إلى Firebase أو قراءة التطبيق لها.
+
+للوصول للسبب بسرعة، أجبني عن هذه الأسئلة:
+
+هل في Firebase Realtime Database تظهر القيم أم أنها أيضًا 0؟
+إذا كانت في Firebase صحيحة → المشكلة في تطبيق Android.
+إذا كانت في Firebase أيضًا 0 → المشكلة في كود ESP32 الذي يرفع البيانات.
+أرسل لقطة شاشة لشجرة قاعدة البيانات (Realtime Database)، مثل:
+sensors
+   temperature
+   humidity
+   ph
+   tds
+أرسل كود الدالة التي ترفع البيانات إلى Firebase، مثل:
+sendFirebaseData()
+
+أو أي جزء يحتوي على:
+
+Firebase.RTDB.setFloat(...)
+
+أو
+
+Firebase.RTDB.setInt(...)
+هل التطبيق يقرأ من نفس المسارات؟ مثل:
+/sensors/temperature
+/sensors/humidity
+/sensors/ph
+/sensors/tds
+ملاحظة مهمة
+
+بما أن الـ ESP32 يطبع القيم الصحيحة، فمن المستبعد أن تكون المشكلة في الحساسات. الأغلب أحد هذه الأسباب:
+
+رفع البيانات إلى مسار مختلف في Firebase.
+التطبيق يقرأ من مسار مختلف.
+يتم رفع القيم مرة واحدة بصفر ثم لا تتحدث.
+أسماء المفاتيح تختلف (مثل temp بدل temperature).
+
+أرسل لي:
+
+صورة من Firebase Realtime Database.
+كود sendFirebaseData().
+كود شاشة التطبيق التي تقرأ Firebase.
+
+وسأحدد لك السطر المسبب للمشكلة وأعطيك التصحيح الكامل.
+
+الصورة أوضحت السبب جزئيًا.
+
+النتيجة المهمة:
+
+✅ ESP32 يقرأ الحساسات بشكل صحيح.
+✅ ESP32 يرفع البيانات إلى Firebase بشكل صحيح.
+✅ Firebase يحتوي على القيم الصحيحة (Temperature = 29.9، Humidity = 34.3، PH = 16.67).
+
+إذن المشكلة ليست في ESP32 ولا في Firebase، بل في تطبيق Android.
+
+لاحظ أيضًا أن قاعدة البيانات عندك تستخدم هذا المسار:
+
+Sensors
+ ├── DHT22
+ │    ├── Temperature
+ │    └── Humidity
+ ├── DS18B20
+ ├── PH
+ └── TDS
+
+إذا كان التطبيق يقرأ مثلًا:
+
+Sensors/Temperature
+Sensors/Humidity
+Sensors/PH
+Sensors/TDS
+
+فلن يجد شيئًا وسيعرض 0.0.
+
+بل يجب أن يقرأ:
+
+Sensors/DHT22/Temperature
+Sensors/DHT22/Humidity
+Sensors/PH
+Sensors/TDS
+
+أو إذا كان PH وTDS داخل مجلدات أخرى فيجب استخدام نفس المسار تمامًا.
+
+أحتاج منك الآن شيئًا واحدًا فقط:
+
+أرسل ملف MainActivity.kt أو الملف الذي يحتوي على شاشة التطبيق التي تقرأ Firebase (أو الصق الكود هنا)، وسأحدد السطر الخاطئ وأعطيك الكود كاملاً بعد التصحيح دون أن أطلب منك تعديل أجزاء بنفسك.
+
+import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.delay
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        setContent {
+            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                SmartGreenHouseScreen(
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SmartGreenHouseScreen(modifier: Modifier = Modifier) {
+
+    var temperature by remember { mutableStateOf("0") }
+    var humidity by remember { mutableStateOf("0") }
+    var ph by remember { mutableStateOf("0") }
+    var tds by remember { mutableStateOf("0") }
+    var fanState by remember { mutableStateOf(false) }
+    var pumpState by remember { mutableStateOf(false) }
+    var windowState by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+
+        val database = FirebaseDatabase.getInstance()
+
+        while (true) {
+
+            database.getReference("sensors/temperature")
+                .get()
+                .addOnSuccessListener {
+                    temperature = it.value.toString()
+                }
+
+            database.getReference("sensors/humidity")
+                .get()
+                .addOnSuccessListener {
+                    humidity = it.value.toString()
+                }
+
+            database.getReference("sensors/ph")
+                .get()
+                .addOnSuccessListener {
+                    ph = it.value.toString()
+                }
+
+            database.getReference("sensors/tds")
+                .get()
+                .addOnSuccessListener {
+                    tds = it.value.toString()
+                }
+            database.getReference("controls/fan")
+                .get()
+                .addOnSuccessListener {
+                    fanState = it.value.toString() == "true"
+                }
+
+            database.getReference("controls/pump")
+                .get()
+                .addOnSuccessListener {
+                    pumpState = it.value.toString() == "true"
+                }
+
+            database.getReference("controls/window")
+                .get()
+                .addOnSuccessListener {
+                    windowState = it.value.toString() == "true"
+                }
+            delay(2000)
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(20.dp)
+    ) {
+
+        Text(
+            text = "SMART GREEN HOUSE",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text("Temperature : $temperature °C")
+        Text("Humidity : $humidity %")
+        Text("pH : $ph")
+        Text("TDS : $tds ppm")
+        Spacer(modifier = Modifier.height(30.dp))
+
+        Text(
+            text = "Controls",
+            style = MaterialTheme.typography.headlineSmall
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Button(
+            onClick = {
+                fanState = !fanState
+                FirebaseDatabase.getInstance()
+                    .getReference("controls/fan")
+                    .setValue(fanState)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                if (fanState)
+                    "Fan ON"
+                else
+                    "Fan OFF"
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Button(
+            onClick = {
+                pumpState = !pumpState
+                FirebaseDatabase.getInstance()
+                    .getReference("controls/pump")
+                    .setValue(pumpState)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                if (pumpState)
+                    "Pump ON"
+                else
+                    "Pump OFF"
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Button(
+            onClick = {
+                windowState = !windowState
+                FirebaseDatabase.getInstance()
+                    .getReference("controls/window")
+                    .setValue(windowState)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                if (windowState)
+                    "Window OPEN"
+                else
+                    "Window CLOSED"
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewScreen() {
+    SmartGreenHouseScreen()
+}
+
+وجدت السبب مباشرة.
+
+في Firebase عندك المسارات هي:
+
+Sensors
+ ├── DHT22
+ │    ├── Temperature
+ │    └── Humidity
+ ├── DS18B20
+ ├── PH
+ └── TDS
+
+أما التطبيق يقرأ:
+
+database.getReference("sensors/temperature")
+database.getReference("sensors/humidity")
+database.getReference("sensors/ph")
+database.getReference("sensors/tds")
+
+وهناك 3 مشاكل:
+
+أنت كتبت sensors بينما في قاعدة البيانات اسمها Sensors.
+درجة الحرارة والرطوبة موجودتان داخل DHT22.
+كتبت ph و tds بينما في قاعدة البيانات هما PH و TDS.
+
+في Firebase أسماء العقد حساسة لحالة الأحرف (Case Sensitive).
+
+استبدل هذه الأسطر:
+
+database.getReference("sensors/temperature")
+
+بـ
+
+database.getReference("Sensors/DHT22/Temperature")
+
+واستبدل
+
+database.getReference("sensors/humidity")
+
+بـ
+
+database.getReference("Sensors/DHT22/Humidity")
+
+واستبدل
+
+database.getReference("sensors/ph")
+
+بـ
+
+database.getReference("Sensors/PH")
+
+واستبدل
+
+database.getReference("sensors/tds")
+
+بـ
+
+database.getReference("Sensors/TDS")
+يوجد احتمال آخر أيضًا
+
+أرى أن التحكمات في التطبيق تكتب إلى:
+
+controls/fan
+controls/pump
+controls/window
+
+بينما من صورة Firebase يظهر المجلد اسمه:
+
+Outputs
+
+وليس:
+
+controls
+
+فإذا كانت الـ ESP32 تقرأ من:
+
+Outputs/Fan
+Outputs/Pump
+Outputs/Window
+
+فلن تعمل الأزرار أيضًا.
+
+أريد صورة واحدة فقط
+
+افتح مجلد Outputs في Firebase حتى تظهر جميع المفاتيح الموجودة داخله (Fan, Pump, Window...) ثم أرسل لقطة شاشة.
+
+بعدها سأعطيك الكود النهائي المتوافق 100% مع قاعدة البيانات ولن يبقى شيء يظهر 0 أو لا يعمل.

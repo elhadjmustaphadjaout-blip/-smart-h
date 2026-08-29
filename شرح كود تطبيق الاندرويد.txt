@@ -1,0 +1,412 @@
+الفقرة الأولى: بداية البرنامج وإنشاء واجهة التطبيق
+package com.example.smartgreenhouse
+
+يحدد اسم الحزمة (Package) التي ينتمي إليها المشروع، وتستخدم لتنظيم ملفات التطبيق.
+
+import android.os.Bundle
+
+يستورد الفئة Bundle التي تُستخدم لنقل البيانات عند إنشاء النشاط (Activity).
+
+import androidx.activity.ComponentActivity
+
+يستورد الفئة الأساسية التي يرث منها النشاط الرئيسي للتطبيق.
+
+import androidx.activity.compose.setContent
+
+يستورد الدالة التي تعرض واجهة المستخدم المبنية باستخدام Jetpack Compose.
+
+import androidx.activity.enableEdgeToEdge
+
+تجعل واجهة التطبيق تمتد حتى حواف الشاشة لتعطي مظهراً حديثاً.
+
+import androidx.compose.foundation.layout.*
+
+يستورد جميع عناصر التخطيط مثل Column وRow وSpacer وغيرها.
+
+import androidx.compose.material3.*
+
+يستورد مكونات واجهة Material Design 3 مثل الأزرار والنصوص.
+
+import androidx.compose.runtime.*
+
+يستورد أدوات Compose الخاصة بإدارة الحالة مثل remember وmutableStateOf وLaunchedEffect.
+
+import androidx.compose.ui.Modifier
+
+يستورد Modifier المستخدم لتعديل حجم وموقع وشكل عناصر الواجهة.
+
+import androidx.compose.ui.tooling.preview.Preview
+
+يستورد أداة لمعاينة الواجهة داخل Android Studio دون تشغيل التطبيق.
+
+import androidx.compose.ui.unit.dp
+
+يستورد وحدة القياس dp المستخدمة لتحديد المسافات والأحجام.
+
+import com.google.firebase.database.FirebaseDatabase
+
+يستورد مكتبة Firebase Realtime Database حتى يتمكن التطبيق من قراءة البيانات وكتابتها.
+
+import kotlinx.coroutines.delay
+
+يستورد الدالة delay لإيقاف التنفيذ لفترة زمنية داخل الـ Coroutine.
+
+class MainActivity : ComponentActivity() {
+
+ينشئ النشاط الرئيسي للتطبيق، وهو أول شاشة تظهر عند تشغيل البرنامج.
+
+override fun onCreate(savedInstanceState: Bundle?) {
+
+دالة تُنفذ تلقائياً عند إنشاء النشاط لأول مرة.
+
+super.onCreate(savedInstanceState)
+
+تنفذ كود النشاط الأساسي قبل تنفيذ الكود الخاص بنا.
+
+enableEdgeToEdge()
+
+تجعل التطبيق يستغل كامل مساحة الشاشة حتى الحواف.
+
+setContent {
+
+تحدد أن واجهة التطبيق ستُبنى باستخدام Jetpack Compose.
+
+Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+
+تنشئ هيكل الشاشة الرئيسي وتجعله يملأ كامل الشاشة، مع توفير مسافات داخلية.
+
+SmartGreenHouseScreen(
+    modifier = Modifier.padding(innerPadding)
+)
+
+تستدعي شاشة البيت الذكي الزراعي مع تطبيق المسافات الداخلية.
+
+}
+}
+}
+
+إغلاق كتل Scaffold وsetContent وonCreate والنشاط الرئيسي.
+
+
+
+
+
+
+الفقرة الثانية: إنشاء المتغيرات والاتصال بقاعدة بيانات Firebase وقراءة البيانات
+@Composable
+fun SmartGreenHouseScreen(modifier: Modifier = Modifier) {
+
+تعريف دالة واجهة المستخدم الرئيسية، وهي المسؤولة عن عرض جميع عناصر شاشة التطبيق.
+
+var temperature by remember { mutableStateOf("0") }
+
+إنشاء متغير لتخزين درجة الحرارة، وقيمته الابتدائية "0"، ويُحدّث الواجهة تلقائياً عند تغيره.
+
+var humidity by remember { mutableStateOf("0") }
+
+إنشاء متغير لتخزين قيمة الرطوبة.
+
+var ph by remember { mutableStateOf("0") }
+
+إنشاء متغير لتخزين قيمة الأس الهيدروجيني (pH).
+
+var tds by remember { mutableStateOf("0") }
+
+إنشاء متغير لتخزين قيمة المواد الصلبة الذائبة (TDS).
+
+var fanState by remember { mutableStateOf(false) }
+
+إنشاء متغير منطقي لحفظ حالة المروحة، وتكون في البداية متوقفة (false).
+
+var pumpState by remember { mutableStateOf(false) }
+
+إنشاء متغير منطقي لحفظ حالة المضخة.
+
+var windowState by remember { mutableStateOf(false) }
+
+إنشاء متغير منطقي لحفظ حالة النافذة.
+
+LaunchedEffect(Unit) {
+
+تشغيل مهمة تعمل مرة واحدة عند فتح الشاشة، وتستمر في الخلفية لقراءة البيانات من Firebase.
+
+val database = FirebaseDatabase.getInstance()
+
+الحصول على كائن يمثل قاعدة بيانات Firebase حتى يتمكن التطبيق من الوصول إليها.
+
+while (true) {
+
+بدء حلقة لا نهائية تجعل التطبيق يقرأ البيانات باستمرار.
+
+database.getReference("Sensors/DHT22/Temperature")
+
+الوصول إلى المسار الذي يحتوي على قيمة درجة الحرارة في Firebase.
+
+.get()
+
+إرسال طلب لقراءة البيانات الموجودة في هذا المسار.
+
+.addOnSuccessListener {
+
+تنفيذ الكود الموجود داخلها إذا نجحت عملية القراءة.
+
+temperature = it.value.toString()
+
+قراءة قيمة درجة الحرارة وتحويلها إلى نص ثم تخزينها في المتغير temperature ليتم تحديث الشاشة.
+
+database.getReference("Sensors/DHT22/Humidity")
+
+الوصول إلى مسار الرطوبة داخل قاعدة البيانات.
+
+.get()
+.addOnSuccessListener {
+    humidity = it.value.toString()
+}
+
+قراءة قيمة الرطوبة وتحديث المتغير humidity.
+
+database.getReference("Sensors/TDS")
+
+الوصول إلى المسار المكتوب باسم Sensors/TDS.
+
+.get()
+.addOnSuccessListener {
+    ph = it.value.toString()
+}
+
+قراءة القيمة الموجودة في هذا المسار وتخزينها في متغير ph.
+
+ملاحظة: هنا يوجد خطأ برمجي، لأن المتغير ph يقرأ من مسار TDS وليس من مسار pH.
+
+database.getReference("sensors/tds")
+
+الوصول إلى مسار آخر باسم sensors/tds.
+
+.get()
+.addOnSuccessListener {
+    tds = it.value.toString()
+}
+
+قراءة قيمة TDS وتخزينها في المتغير tds.
+
+ملاحظة: هنا أيضاً يوجد اختلاف في كتابة المسار، حيث استُخدم sensors بحروف صغيرة بينما في الأسطر السابقة استُخدم Sensors بحرف S كبير. إذا كانت قاعدة البيانات تستخدم حرفاً كبيراً، فلن يتم العثور على البيانات لأن Firebase تفرق بين الأحرف الكبيرة والصغيرة.
+
+database.getReference("Outputs/FanState")
+
+الوصول إلى المسار الذي يحتوي على حالة المروحة.
+
+.get()
+.addOnSuccessListener {
+    fanState = it.value.toString() == "true"
+}
+
+قراءة حالة المروحة، وإذا كانت القيمة "true" تصبح المروحة في التطبيق تعمل، وإلا تكون متوقفة.
+
+database.getReference("Outputs/PumpState")
+
+الوصول إلى مسار حالة المضخة.
+
+.get()
+.addOnSuccessListener {
+    pumpState = it.value.toString() == "true"
+}
+
+قراءة حالة المضخة وتحديث المتغير الخاص بها.
+
+database.getReference("Outputs/WindowState")
+
+الوصول إلى مسار حالة النافذة.
+
+.get()
+.addOnSuccessListener {
+    windowState = it.value.toString() == "true"
+}
+
+قراءة حالة النافذة وتحديث المتغير windowState.
+
+delay(2000)
+
+إيقاف الحلقة لمدة ثانيتين قبل إعادة قراءة جميع البيانات مرة أخرى، حتى لا يتم إرسال عدد كبير جداً من الطلبات إلى Firebase.
+
+}
+}
+
+إغلاق الحلقة اللانهائية ثم إغلاق LaunchedEffect.
+
+
+
+
+
+
+الفقرة الثالثة: تصميم واجهة المستخدم وإظهار البيانات وأزرار التحكم
+Column(
+    modifier = modifier
+        .fillMaxSize()
+        .padding(20.dp)
+) {
+
+إنشاء عمود (Column) لترتيب جميع عناصر الواجهة بشكل عمودي من الأعلى إلى الأسفل، مع جعل العمود يملأ الشاشة بالكامل وإضافة هامش داخلي مقداره 20dp حتى لا تلتصق العناصر بحواف الشاشة.
+
+Text(
+    text = "SMART GREEN HOUSE",
+    style = MaterialTheme.typography.headlineMedium
+)
+
+عرض عنوان التطبيق SMART GREEN HOUSE في أعلى الشاشة باستخدام خط كبير من تصميم Material Design.
+
+Spacer(modifier = Modifier.height(20.dp))
+
+إضافة فراغ رأسي بين عنوان التطبيق والعناصر التي تليه بمقدار 20dp لتحسين شكل الواجهة.
+
+Text("Temperature : $temperature °C")
+
+عرض قيمة درجة الحرارة الموجودة في المتغير temperature مع كتابة وحدة القياس (درجة مئوية).
+
+Text("Humidity : $humidity %")
+
+عرض نسبة الرطوبة الموجودة في المتغير humidity مع علامة النسبة المئوية.
+
+Text("pH : $ph")
+
+عرض قيمة الأس الهيدروجيني (pH) الموجودة في المتغير ph.
+
+Text("TDS : $tds ppm")
+
+عرض قيمة المواد الصلبة الذائبة (TDS) الموجودة في المتغير tds مع وحدة القياس ppm.
+
+Spacer(modifier = Modifier.height(30.dp))
+
+إضافة فراغ رأسي بين قسم القراءات وقسم التحكم لتصبح الواجهة أكثر ترتيباً.
+
+Text(
+    text = "Controls",
+    style = MaterialTheme.typography.headlineSmall
+)
+
+عرض عنوان قسم التحكم Controls بخط أصغر قليلاً من عنوان التطبيق.
+
+Spacer(modifier = Modifier.height(10.dp))
+
+إضافة مسافة صغيرة بين عنوان قسم التحكم والأزرار.
+
+Button(
+
+إنشاء زر للتحكم في تشغيل وإيقاف المروحة.
+
+onClick = {
+
+الكود الموجود هنا يُنفذ عند ضغط المستخدم على الزر.
+
+fanState = !fanState
+
+عكس حالة المروحة، فإذا كانت تعمل تصبح متوقفة، وإذا كانت متوقفة تصبح تعمل.
+
+FirebaseDatabase.getInstance()
+
+الحصول على اتصال جديد مع قاعدة بيانات Firebase.
+
+.getReference("Outputs/FanState")
+
+الوصول إلى المسار الذي يخزن حالة المروحة.
+
+.setValue(fanState)
+
+إرسال حالة المروحة الجديدة إلى Firebase ليقرأها جهاز ESP32 ويشغل أو يوقف المروحة.
+
+modifier = Modifier.fillMaxWidth()
+
+جعل الزر يمتد بعرض الشاشة بالكامل.
+
+Text(
+    if (fanState)
+        "Fan ON"
+    else
+        "Fan OFF"
+)
+
+عرض عبارة Fan ON إذا كانت المروحة تعمل، أو Fan OFF إذا كانت متوقفة.
+
+Spacer(modifier = Modifier.height(10.dp))
+
+إضافة مسافة بين زر المروحة وزر المضخة.
+
+Button(
+
+إنشاء زر للتحكم في المضخة.
+
+pumpState = !pumpState
+
+تغيير حالة المضخة من تشغيل إلى إيقاف أو العكس.
+
+FirebaseDatabase.getInstance()
+    .getReference("Outputs/PumpState")
+    .setValue(pumpState)
+
+إرسال الحالة الجديدة للمضخة إلى Firebase.
+
+Text(
+    if (pumpState)
+        "Pump ON"
+    else
+        "Pump OFF"
+)
+
+إظهار حالة المضخة الحالية على الزر.
+
+Spacer(modifier = Modifier.height(10.dp))
+
+إضافة مسافة بين زر المضخة وزر النافذة.
+
+Button(
+
+إنشاء زر للتحكم في فتح وإغلاق نافذة البيت الزراعي.
+
+windowState = !windowState
+
+تغيير حالة النافذة من مفتوحة إلى مغلقة أو العكس.
+
+FirebaseDatabase.getInstance()
+    .getReference("Outputs/WindowState")
+    .setValue(windowState)
+
+إرسال الحالة الجديدة للنافذة إلى قاعدة بيانات Firebase.
+
+Text(
+    if (windowState)
+        "Window OPEN"
+    else
+        "Window CLOSED"
+)
+
+إذا كانت النافذة مفتوحة يظهر النص Window OPEN، وإذا كانت مغلقة يظهر Window CLOSED.
+
+}
+
+إغلاق عنصر Column بعد الانتهاء من إضافة جميع عناصر الواجهة.
+
+}
+
+إغلاق الدالة SmartGreenHouseScreen.
+
+@Preview(showBackground = true)
+
+تخبر Android Studio بعرض معاينة للشاشة داخل بيئة التطوير دون الحاجة لتشغيل التطبيق.
+
+@Composable
+fun PreviewScreen() {
+
+إنشاء دالة خاصة بالمعاينة فقط.
+
+SmartGreenHouseScreen()
+
+استدعاء شاشة البيت الزراعي لعرضها في نافذة المعاينة.
+
+}
+
+إغلاق دالة المعاينة، وبهذا ينتهي كود تطبيق الأندرويد بالكامل.
+
+
+
+
+
+
